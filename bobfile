@@ -1,0 +1,16 @@
+include https://raw.githubusercontent.com/codemonstur/bobfiles/master/foss-lib-github-maven
+
+vendor: com.github.codemonstur
+name: extension-undertow
+version: 1.0.0
+packaging: jar
+release: 11
+description: Utility classes for using undertow
+license:
+  name: MIT
+developer:
+  name: Jurgen Voorneveld
+  email: jegvoorneveld@gmail.com
+enablePreview: false
+dependencies:
+  - repository: io.undertow:undertow-core:2.3.3.Final
