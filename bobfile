@@ -4,7 +4,7 @@ vendor: com.github.codemonstur
 name: extension-undertow
 version: 1.0.0
 packaging: jar
-release: 11
+release: 17
 description: Utility classes for using undertow
 license:
   name: MIT
