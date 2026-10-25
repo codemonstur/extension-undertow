@@ -34,10 +34,11 @@
 
     <properties>
         <module.name>com.github.codemonstur.extension.undertow</module.name>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <maven.version>[3.6.3,)</maven.version>
         <maven.compiler.release>17</maven.compiler.release>
+        <maven.version>[3.6.3,)</maven.version>
 
         <version.library.undertow>2.3.3.Final</version.library.undertow>
 
