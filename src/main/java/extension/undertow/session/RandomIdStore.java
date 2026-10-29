@@ -4,6 +4,7 @@ import extension.undertow.error.NotLoggedIn;
 import io.undertow.server.HttpServerExchange;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.Random;
 
 import static extension.undertow.session.SessionStore.getValueForCookie;
@@ -12,7 +13,7 @@ import static io.undertow.util.Headers.SET_COOKIE;
 public interface RandomIdStore<T> extends SessionStore<T> {
 
     default Random prngSessionId() {
-        return SECURE;
+        return new SecureRandom();
     }
     default int lengthSessionId() {
         return 32;
@@ -23,7 +24,9 @@ public interface RandomIdStore<T> extends SessionStore<T> {
     void deleteSession(String sessionId) throws IOException;
 
     default void setSession(final HttpServerExchange exchange, final T session) throws IOException {
-        final String sessionId = newByteArray().prng(prngSessionId()).length(lengthSessionId()).fillRandom().hex();
+        final byte[] bytes = new byte[lengthSessionId()];
+        prngSessionId().nextBytes(bytes);
+        final String sessionId = java.util.HexFormat.of().formatHex(bytes);
         storeSession(sessionId, session);
         exchange.getResponseHeaders().add(SET_COOKIE, getSessionCookieName() + "=" + sessionId + getSessionCookieConfiguration());
     }

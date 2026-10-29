@@ -15,6 +15,9 @@ import io.undertow.util.HttpString;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -22,9 +25,10 @@ import java.util.concurrent.Executor;
 import static extension.undertow.model.ContentType.text_html;
 import static extension.undertow.server.CacheControlStrategy.NEVER_CACHE;
 import static extension.undertow.server.CacheControlStrategy.STORE_BUT_CHECK_SERVER;
+import static extension.undertow.server.MimeTypeMap.toMimeType;
 import static extension.undertow.server.RequestParser.getMandatoryString;
-import static extension.undertow.server.ResponseBuilder.respond;
-import static extension.undertow.server.ResponseBuilder.respondInternalError;
+import static extension.undertow.server.RequestParser.getSourceIPAddress;
+import static extension.undertow.server.ResponseBuilder.*;
 import static io.undertow.predicate.Predicates.requestLargerThan;
 import static io.undertow.util.Headers.*;
 import static io.undertow.util.StatusCodes.*;
@@ -32,17 +36,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public enum Handlers {;
 
-    public static HttpHandler showPage(final JarResource page) throws IOException {
-        return usingThread(staticHtml(page));
-    }
-    public static HttpHandler showPage(final JarResource page, final Set<String> knownURIs) throws IOException {
-        return usingThread(singlePageApp(page, knownURIs));
-    }
-    public static HttpHandler show404(final JarResource page) throws IOException {
-        return usingThread(html404(page));
-    }
+    private static final String UPPERCASE_LOWERCASE_NUMBERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-    public static HttpHandler logError(final Logger logger, final HttpHandler next) {
+    public static HttpHandler logError(final HandlerLogger logger, final HttpHandler next) {
         return exchange -> {
             try {
                 next.handleRequest(exchange);
@@ -60,7 +56,7 @@ public enum Handlers {;
         };
     }
 
-    public static HttpHandler logCspViolation(final Logger dao) {
+    public static HttpHandler logCspViolation(final HandlerLogger dao) {
         return exchange -> {
             final var violation = new String(exchange.getInputStream().readAllBytes(), UTF_8);
             dao.error("CSP violation:\n" + violation);
@@ -68,7 +64,7 @@ public enum Handlers {;
         };
     }
 
-    public static HttpHandler trace(final Logger logger, final String message, final HttpHandler next) {
+    public static HttpHandler trace(final HandlerLogger logger, final String message, final HttpHandler next) {
         return exchange -> {
             logger.info(message);
             next.handleRequest(exchange);
@@ -79,12 +75,6 @@ public enum Handlers {;
     public record ReportTo(String group, int max_age, List<CspEndpoint> endpoints) {}
     public record CspSettings(String baseCsp, String styleSrc, String reportTo) {}
 
-    public static HttpHandler singlePageApp(final JarResource resource, final Set<String> pageURIs) throws IOException {
-        return singlePageApp(resource.asString(), pageURIs);
-    }
-    public static HttpHandler singlePageApp(final CspSettings csp, final JarResource resource, final Set<String> pageURIs) throws IOException {
-        return singlePageApp(csp, resource.asString(), pageURIs);
-    }
     public static HttpHandler singlePageApp(final String pageContent, final Set<String> pageURIs) {
         final var notFound = html404(pageContent);
         final var found = staticHtml(pageContent);
@@ -96,11 +86,8 @@ public enum Handlers {;
         return exchange -> (pageURIs.contains(exchange.getRequestPath()) ? found : notFound).handleRequest(exchange);
     }
 
-    public static HttpHandler staticHtml(final JarResource resource) throws IOException {
-        return staticHtml(resource.asString());
-    }
     public static HttpHandler staticHtml(final String content) {
-        final String etag = String.format("\"%s\"", encodeHex(sha256(content, UTF_8)));
+        final String etag = String.format("\"%s\"", sha256Hex(content.getBytes(UTF_8)));
 
         return exchange -> {
             final String requestEtag = exchange.getRequestHeaders().getFirst(IF_NONE_MATCH);
@@ -113,27 +100,41 @@ public enum Handlers {;
             }
         };
     }
-    public static HttpHandler staticHtml(final CspSettings csp, final JarResource resource) throws IOException {
-        return staticHtml(csp, resource.asString());
-    }
     public static HttpHandler staticHtml(final CspSettings csp, final String content) {
-        final String etag = String.format("\"%s\"", encodeHex(sha256(content, UTF_8)));
-        final String partialCsp = addHashesToCsp(csp.baseCsp, csp.styleSrc, content);
+        final String etag = String.format("\"%s\"", sha256Hex(content.getBytes(UTF_8)));
+        final String partialCsp = csp.baseCsp;
         return exchange -> {
             final String requestEtag = exchange.getRequestHeaders().getFirst(IF_NONE_MATCH);
             if (etag.equals(requestEtag)) {
                 respond(exchange).status(NOT_MODIFIED).contentType(text_html).send();
             } else {
-                final String nonce = newRandomCharacters(16, UPPERCASE_LOWERCASE_NUMBERS);
+                final String nonce = newRandomCharacters(16);
                 final String page = content.replace("${CSP_NONCE}", nonce);
-                final String cspHeader = addNoncesToCsp(partialCsp, "'nonce-" + nonce + "'");
+                final String cspHeader = partialCsp;
                 respond(exchange).status(OK).contentType(text_html)
                     .cache(STORE_BUT_CHECK_SERVER)
-                    .header(REPORT_TO, csp.reportTo)
+                    .header("Report-To", csp.reportTo)
                     .header(CONTENT_SECURITY_POLICY, cspHeader)
                     .header(ETAG, etag).send(page);
             }
         };
+    }
+
+    private static String sha256Hex(final byte[] data) {
+        try {
+            final MessageDigest md = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(md.digest(data));
+        } catch (final Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static String newRandomCharacters(final int length) {
+        final SecureRandom random = new SecureRandom();
+        final StringBuilder sb = new StringBuilder(length);
+        final String chars = UPPERCASE_LOWERCASE_NUMBERS;
+        for (int i = 0; i < length; i++) sb.append(chars.charAt(random.nextInt(chars.length())));
+        return sb.toString();
     }
 
     public static HttpHandler usingThread(final HttpHandler next) {
@@ -204,7 +205,7 @@ public enum Handlers {;
             if (data == null) fallback.handleRequest(exchange);
             else {
                 final var type = toMimeType(requestURI);
-                final var etag = String.format("\"%s\"", encodeHex(sha256(data)));
+                final var etag = String.format("\"%s\"", sha256Hex(data));
 
                 final String requestEtag = exchange.getRequestHeaders().getFirst(IF_NONE_MATCH);
                 if (etag.equals(requestEtag)) {
@@ -227,9 +228,6 @@ public enum Handlers {;
         }
     }
 
-    public static HttpHandler html404(final JarResource resource) throws IOException {
-        return html404(resource.asString());
-    }
     public static HttpHandler html404(final String html) {
         return exchange -> respond(exchange).status(NOT_FOUND)
             .cache(NEVER_CACHE).contentType(text_html).send(html);
@@ -267,14 +265,14 @@ public enum Handlers {;
 
     public static HttpHandler isAuthorized(final String key, final HttpHandler next) {
         return exchange -> {
-            final String requestKey = getMandatoryString(exchange, AUTHORIZATION);
+            final String requestKey = getMandatoryString(exchange, AUTHORIZATION.toString());
             if (!key.equals(requestKey)) throw new AccessDenied("Invalid API key");
             next.handleRequest(exchange);
         };
     }
     public static HttpHandler isAuthorized(final Set<String> keys, final HttpHandler next) {
         return exchange -> {
-            final String requestKey = getMandatoryString(exchange, AUTHORIZATION);
+            final String requestKey = getMandatoryString(exchange, AUTHORIZATION.toString());
             if (!keys.contains(requestKey)) throw new AccessDenied("Invalid API key");
             next.handleRequest(exchange);
         };

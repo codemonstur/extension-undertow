@@ -1,7 +1,7 @@
 package extension.undertow.server;
 
-import common.error.InvalidInput;
-import common.error.NotFound;
+import extension.undertow.error.InvalidInput;
+import extension.undertow.error.NotFound;
 
 import java.io.File;
 import java.util.List;
@@ -10,8 +10,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-import static common.error.ErrorCodes.*;
-import static common.util.Security.calculateHaystackSize;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 
@@ -48,7 +46,7 @@ public enum Validator {;
     private static final Pattern valid_email = Pattern.compile("[a-z0-9\\-_+\\.]+@[a-z0-9-\\.]+");
     public static String requireEmailAddress(final String email, final String message) throws InvalidInput {
         if (email == null || !valid_email.matcher(email).matches())
-            throw new InvalidInput(invalid_email_address, message);
+            throw new InvalidInput(message);
         return email;
     }
 
@@ -78,7 +76,7 @@ public enum Validator {;
     }
 
     public static String requireImage(final String contentType, final String message) throws InvalidInput {
-        if (isNullOrEmpty(contentType) || !contentType.startsWith("image/")) throw new InvalidInput(not_an_image, message);
+        if (isNullOrEmpty(contentType) || !contentType.startsWith("image/")) throw new InvalidInput(message);
         return contentType;
     }
 
@@ -185,8 +183,8 @@ public enum Validator {;
     }
 
     public static String requireStrongPassword(final String password) throws InvalidInput {
-        if (calculateHaystackSize(password) < 35)
-            throw new InvalidInput(password_not_strong_enough, "Password is not strong enough");
+        if (password == null || password.length() < 8)
+            throw new InvalidInput("Password is not strong enough");
         return password;
     }
 

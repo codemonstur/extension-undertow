@@ -1,6 +1,5 @@
 package extension.undertow.server;
 
-import extension.undertow.session.SessionHandlers;
 import extension.undertow.session.SessionHandlers.UserRequestHandler;
 import io.undertow.predicate.Predicate;
 import io.undertow.server.HttpHandler;

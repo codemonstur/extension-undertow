@@ -1,6 +1,5 @@
 package extension.undertow.server;
 
-import extension.undertow.error.InvalidInput;
 import extension.undertow.model.ContentType;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.HttpString;
@@ -12,7 +11,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-import static common.util.JSON.escapeJson;
 import static extension.undertow.server.CacheControlStrategy.NEVER_CACHE;
 import static io.undertow.util.Headers.CONTENT_TYPE;
 import static io.undertow.util.Headers.LOCATION;
@@ -46,25 +44,22 @@ public final class ResponseBuilder {
         return String.format(ERROR_MESSAGE, statusCode, errorCode, escapeJson(message));
     }
 
+    private static String escapeJson(final String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
     public static ResponseBuilder respond(final HttpServerExchange exchange) {
         return new ResponseBuilder(exchange);
     }
-    public static ResponseBuilder respond(final HttpServerExchange exchange, final Serializer serializer) throws InvalidInput {
-        return new ResponseBuilder(exchange, serializer);
-    }
 
     private final HttpServerExchange exchange;
-    private final Serializer serializer;
     private final Map<HttpString, String> headers = new HashMap<>();
     private int status = INTERNAL_SERVER_ERROR;
     private CacheControlStrategy caching = NEVER_CACHE;
 
     private ResponseBuilder(final HttpServerExchange exchange) {
-        this(exchange, null);
-    }
-    private ResponseBuilder(final HttpServerExchange exchange, final Serializer serializer) {
         this.exchange = exchange;
-        this.serializer = serializer;
     }
     public ResponseBuilder status(final int status) {
         if (status < 100 || status > 999) throw new IllegalArgumentException("Status must be a valid HTTP status code");
@@ -144,11 +139,6 @@ public final class ResponseBuilder {
         }
     }
 
-    public void send(final Object object) {
-        if (serializer == null) throw new IllegalStateException("Missing serializer");
-        preSend();
-        exchange.getResponseSender().send(serializer.toJson(object));
-    }
     public void send() {
         preSend();
     }

@@ -8,7 +8,9 @@ import io.undertow.server.handlers.form.FormParserFactory;
 import io.undertow.util.HeaderMap;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.util.Base64;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -17,6 +19,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import static extension.undertow.server.Validator.*;
 import static io.undertow.util.Headers.X_FORWARDED_FOR;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -62,7 +65,7 @@ public enum RequestParser {;
             final String[] parts = queryString.split("&");
             for (final String param : parts) {
                 if (param.startsWith(qParameter)) {
-                    return decodeUrl(param.substring(qParameter.length()));
+                    return URLDecoder.decode(param.substring(qParameter.length()), UTF_8);
                 }
             }
         }
@@ -286,7 +289,7 @@ public enum RequestParser {;
         return "Basic " + toBasicAuthCredentials(username, password);
     }
     public static String toBasicAuthCredentials(final String username, final String password) {
-        return encodeBase64(username + ':' + password, UTF_8);
+        return Base64.getEncoder().encodeToString((username + ':' + password).getBytes(UTF_8));
     }
 
     public static String getSourceIPAddress(final HttpServerExchange exchange) {
