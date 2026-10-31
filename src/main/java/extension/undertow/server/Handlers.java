@@ -72,7 +72,7 @@ public enum Handlers {;
     }
 
     public record CspEndpoint(String url) {}
-    public record ReportTo(String group, int max_age, List<CspEndpoint> endpoints) {}
+    public record ReportTo(String group, int maxAge, List<CspEndpoint> endpoints) {}
     public record CspSettings(String baseCsp, String styleSrc, String reportTo) {}
 
     public static HttpHandler singlePageApp(final String pageContent, final Set<String> pageURIs) {
