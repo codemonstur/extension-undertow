@@ -34,10 +34,20 @@ import static io.undertow.util.Headers.*;
 import static io.undertow.util.StatusCodes.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * The {@code Handlers} enum.
+ */
 public enum Handlers {;
 
     private static final String UPPERCASE_LOWERCASE_NUMBERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
+    /**
+     * Returns the result of {@code logError}.
+     *
+     * @param logger the logger
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler logError(final HandlerLogger logger, final HttpHandler next) {
         return exchange -> {
             try {
@@ -56,6 +66,12 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code logCspViolation}.
+     *
+     * @param dao the dao
+     * @return the result
+     */
     public static HttpHandler logCspViolation(final HandlerLogger dao) {
         return exchange -> {
             final var violation = new String(exchange.getInputStream().readAllBytes(), UTF_8);
@@ -64,6 +80,14 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code trace}.
+     *
+     * @param logger the logger
+     * @param message the message
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler trace(final HandlerLogger logger, final String message, final HttpHandler next) {
         return exchange -> {
             logger.info(message);
@@ -71,21 +95,61 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * The {@code CspEndpoint} record.
+     *
+     * @param url the url
+     */
     public record CspEndpoint(String url) {}
+    /**
+     * The {@code ReportTo} record.
+     *
+     * @param group the group
+     * @param maxAge the max age
+     * @param endpoints the endpoints
+     */
     public record ReportTo(String group, int maxAge, List<CspEndpoint> endpoints) {}
+    /**
+     * The {@code CspSettings} record.
+     *
+     * @param baseCsp the base csp
+     * @param styleSrc the style src
+     * @param reportTo the report to
+     */
     public record CspSettings(String baseCsp, String styleSrc, String reportTo) {}
 
+    /**
+     * Returns the result of {@code singlePageApp}.
+     *
+     * @param pageContent the page content
+     * @param pageURIs the page uris
+     * @return the result
+     */
     public static HttpHandler singlePageApp(final String pageContent, final Set<String> pageURIs) {
         final var notFound = html404(pageContent);
         final var found = staticHtml(pageContent);
         return exchange -> (pageURIs.contains(exchange.getRequestPath()) ? found : notFound).handleRequest(exchange);
     }
+    /**
+     * Returns the result of {@code singlePageApp}.
+     *
+     * @param csp the csp
+     * @param pageContent the page content
+     * @param pageURIs the page uris
+     * @return the result
+     */
     public static HttpHandler singlePageApp(final CspSettings csp, final String pageContent, final Set<String> pageURIs) {
         final var notFound = html404(pageContent);
         final var found = staticHtml(csp, pageContent);
         return exchange -> (pageURIs.contains(exchange.getRequestPath()) ? found : notFound).handleRequest(exchange);
     }
 
+    /**
+     * Returns the result of {@code staticHtml}.
+     *
+     * @param content the content
+     * @return the result
+     */
     public static HttpHandler staticHtml(final String content) {
         final String etag = String.format("\"%s\"", sha256Hex(content.getBytes(UTF_8)));
 
@@ -100,6 +164,13 @@ public enum Handlers {;
             }
         };
     }
+    /**
+     * Returns the result of {@code staticHtml}.
+     *
+     * @param csp the csp
+     * @param content the content
+     * @return the result
+     */
     public static HttpHandler staticHtml(final CspSettings csp, final String content) {
         final String etag = String.format("\"%s\"", sha256Hex(content.getBytes(UTF_8)));
         final String partialCsp = csp.baseCsp;
@@ -137,6 +208,12 @@ public enum Handlers {;
         return sb.toString();
     }
 
+    /**
+     * Returns the result of {@code usingThread}.
+     *
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler usingThread(final HttpHandler next) {
         return exchange -> {
             exchange.startBlocking();
@@ -148,6 +225,13 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code usingThread}.
+     *
+     * @param executor the executor
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler usingThread(final Executor executor, final HttpHandler next) {
         return exchange -> {
             exchange.startBlocking();
@@ -159,10 +243,28 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * The {@code HttpEventCallback} interface.
+     */
     public interface HttpEventCallback {
+        /**
+         * Performs the {@code handleHttpEvent} operation.
+         *
+         * @param ip the ip
+         * @param method the method
+         * @param uri the uri
+         * @param statusCode the status code
+         */
         void handleHttpEvent(String ip, String method, String uri, int statusCode);
     }
 
+    /**
+     * Returns the result of {@code recordEvent}.
+     *
+     * @param callback the callback
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler recordEvent(final HttpEventCallback callback, final HttpHandler next) {
         return exchange -> {
             final String ip = getSourceIPAddress(exchange);
@@ -178,10 +280,25 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code matchesEtag}.
+     *
+     * @param request the request
+     * @param etag the etag
+     * @return whether the condition holds
+     */
     public static boolean matchesEtag(final HttpServerExchange request, final String etag) {
         return (etag.equals(request.getRequestHeaders().getFirst(IF_NONE_MATCH)));
     }
 
+    /**
+     * Performs the {@code checkEtag} operation.
+     *
+     * @param etag the etag
+     * @param exchange the exchange
+     * @param next the next
+     * @throws Exception if the operation fails
+     */
     public static void checkEtag(final String etag, final HttpServerExchange exchange, final HttpHandler next) throws Exception {
         if (matchesEtag(exchange, etag)) {
             respond(exchange).status(NOT_MODIFIED).send();
@@ -190,6 +307,12 @@ public enum Handlers {;
         next.handleRequest(exchange);
     }
 
+    /**
+     * Returns the result of {@code compressResponse}.
+     *
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler compressResponse(final HttpHandler next) {
         return new EncodingHandler(new ContentEncodingRepository()
             .addEncodingHandler("gzip", new GzipEncodingProvider(), 100, Predicates.parse("max-content-size[5]"))
@@ -197,6 +320,13 @@ public enum Handlers {;
             .setNext(next);
     }
 
+    /**
+     * Returns the result of {@code resourceHandler}.
+     *
+     * @param wwwroot the wwwroot
+     * @param fallback the fallback
+     * @return the result
+     */
     public static HttpHandler resourceHandler(final String wwwroot, final HttpHandler fallback) {
         return exchange -> {
             final var requestURI = exchange.getRequestURI();
@@ -217,6 +347,14 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code loadResource}.
+     *
+     * @param prefix the prefix
+     * @param requestURI the request uri
+     * @return the result
+     * @throws IOException if the operation fails
+     */
     public static byte[] loadResource(final String prefix, final String requestURI) throws IOException {
         if (requestURI.isBlank() || requestURI.endsWith("/") || requestURI.endsWith("\\")) return null;
         final var requestedPath = Path.of(prefix, requestURI).normalize().toString().replace('\\', '/');
@@ -228,23 +366,54 @@ public enum Handlers {;
         }
     }
 
+    /**
+     * Returns the result of {@code html404}.
+     *
+     * @param html the html
+     * @return the result
+     */
     public static HttpHandler html404(final String html) {
         return exchange -> respond(exchange).status(NOT_FOUND)
             .cache(NEVER_CACHE).contentType(text_html).send(html);
     }
 
+    /**
+     * Returns the result of {@code statusCode}.
+     *
+     * @param code the code
+     * @return the result
+     */
     public static HttpHandler statusCode(final int code) {
         return exchange -> exchange.setStatusCode(code);
     }
 
+    /**
+     * Returns the result of {@code redirect}.
+     *
+     * @param url the url
+     * @return the result
+     */
     public static HttpHandler redirect(final String url) {
         return exchange -> respond(exchange).status(FOUND).header(LOCATION, url).send();
     }
 
+    /**
+     * Returns the result of {@code noSuchApiEndpoint}.
+     *
+     * @return the result
+     */
     public static HttpHandler noSuchApiEndpoint() {
         return exchange -> respondError(exchange, BAD_REQUEST, BAD_REQUEST, "No such API endpoint");
     }
 
+    /**
+     * Returns the result of {@code pathPrefix}.
+     *
+     * @param pathPrefix the path prefix
+     * @param match the match
+     * @param noMatch the no match
+     * @return the result
+     */
     public static HttpHandler pathPrefix(final String pathPrefix, final HttpHandler match, final HttpHandler noMatch) {
         return exchange -> {
             final var choice = exchange.getRequestURI().startsWith(pathPrefix) ? match : noMatch;
@@ -252,17 +421,40 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code routing}.
+     *
+     * @return the result
+     */
     public static ExtendedRoutingHandler routing() {
         return new ExtendedRoutingHandler();
     }
+    /**
+     * Returns the result of {@code userRouting}.
+     *
+     * @param <T> the type parameter
+     * @return the result
+     */
     public static <T> UserRoutingHandler<T> userRouting() {
         return new UserRoutingHandler<>();
     }
 
+    /**
+     * Returns the result of {@code virtualHosts}.
+     *
+     * @return the result
+     */
     public static NameVirtualHostHandler virtualHosts() {
         return new NameVirtualHostHandler();
     }
 
+    /**
+     * Returns the result of {@code isAuthorized}.
+     *
+     * @param key the key
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler isAuthorized(final String key, final HttpHandler next) {
         return exchange -> {
             final String requestKey = getMandatoryString(exchange, AUTHORIZATION.toString());
@@ -270,6 +462,13 @@ public enum Handlers {;
             next.handleRequest(exchange);
         };
     }
+    /**
+     * Returns the result of {@code isAuthorized}.
+     *
+     * @param keys the keys
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler isAuthorized(final Set<String> keys, final HttpHandler next) {
         return exchange -> {
             final String requestKey = getMandatoryString(exchange, AUTHORIZATION.toString());
@@ -282,6 +481,12 @@ public enum Handlers {;
         CONTENT_SECURITY_POLICY_REPORT_ONLY = HttpString.tryFromString("Content-Security-Policy-Report-Only"),
         CROSS_ORIGIN_OPENER_POLICY = HttpString.tryFromString("Cross-Origin-Opener-Policy");
 
+    /**
+     * Returns the result of {@code securityHeaders}.
+     *
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler securityHeaders(final HttpHandler next) {
         return exchange -> {
             if (exchange.isSecure()) {
@@ -298,6 +503,13 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code addCsp}.
+     *
+     * @param value the value
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler addCsp(final String value, final HttpHandler next) {
         return exchange -> {
             exchange.getResponseHeaders().add(CONTENT_SECURITY_POLICY, value);
@@ -305,6 +517,13 @@ public enum Handlers {;
         };
     }
 
+    /**
+     * Returns the result of {@code addCspReportOnly}.
+     *
+     * @param value the value
+     * @param next the next
+     * @return the result
+     */
     public static HttpHandler addCspReportOnly(final String value, final HttpHandler next) {
         return exchange -> {
             exchange.getResponseHeaders().add(CONTENT_SECURITY_POLICY_REPORT_ONLY, value);

@@ -5,6 +5,9 @@ import java.util.Map;
 import static java.util.Map.entry;
 import static java.util.Map.ofEntries;
 
+/**
+ * The {@code MimeTypeMap} enum.
+ */
 public enum MimeTypeMap {;
 
     private static final Map<String, String> mimetypeMap = ofEntries(
@@ -20,6 +23,12 @@ public enum MimeTypeMap {;
             entry(".pdf", "application/pdf")
     );
 
+    /**
+     * Returns the result of {@code toMimeType}.
+     *
+     * @param filename the filename
+     * @return the result
+     */
     public static String toMimeType(final String filename) {
         final var offset = filename.lastIndexOf('.');
         if (offset == -1) return "application/octet-stream";

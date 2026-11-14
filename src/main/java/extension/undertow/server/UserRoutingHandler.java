@@ -16,6 +16,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static io.undertow.util.Methods.*;
 import static io.undertow.util.StatusCodes.NOT_FOUND;
 
+/**
+ * The {@code UserRoutingHandler} class.
+ *
+ * @param <T> the type parameter
+ */
 public class UserRoutingHandler<T> implements UserRequestHandler<T> {
 
     // Matcher objects grouped by http methods.
@@ -30,10 +35,20 @@ public class UserRoutingHandler<T> implements UserRequestHandler<T> {
     // If this is true then path matches will be added to the query parameters for easy access by later handlers.
     private final boolean rewriteQueryParameters;
 
+    /**
+     * Creates a new instance.
+     */
     public UserRoutingHandler() {
         this.rewriteQueryParameters = true;
     }
 
+    /**
+     * Performs the {@code handleRequest} operation.
+     *
+     * @param session the session
+     * @param exchange the exchange
+     * @throws Exception if the operation fails
+     */
     @Override
     public void handleRequest(final T session, final HttpServerExchange exchange) throws Exception {
         final var matcher = matches.get(exchange.getRequestMethod());
@@ -65,10 +80,26 @@ public class UserRoutingHandler<T> implements UserRequestHandler<T> {
         }
     }
 
+    /**
+     * Returns the result of {@code add}.
+     *
+     * @param method the method
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> add(final String method, final String template, final UserRequestHandler<T> handler) {
         return add(new HttpString(method), template, handler);
     }
 
+    /**
+     * Returns the result of {@code add}.
+     *
+     * @param method the method
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> add(final HttpString method, final String template, final UserRequestHandler<T> handler) {
         var matcher = matches.get(method);
         if (matcher == null) {
@@ -85,31 +116,84 @@ public class UserRoutingHandler<T> implements UserRequestHandler<T> {
         return this;
     }
 
+    /**
+     * Returns the result of {@code head}.
+     *
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> head(final String template, final UserRequestHandler<T> handler) {
         return add(HEAD, template, handler);
     }
 
+    /**
+     * Returns the result of {@code get}.
+     *
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> get(final String template, final UserRequestHandler<T> handler) {
         return add(GET, template, handler);
     }
 
+    /**
+     * Returns the result of {@code post}.
+     *
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> post(final String template, final UserRequestHandler<T> handler) {
         return add(POST, template, handler);
     }
 
+    /**
+     * Returns the result of {@code put}.
+     *
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> put(final String template, final UserRequestHandler<T> handler) {
         return add(PUT, template, handler);
     }
 
+    /**
+     * Returns the result of {@code delete}.
+     *
+     * @param template the template
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> delete(final String template, final UserRequestHandler<T> handler) {
         return add(DELETE, template, handler);
     }
 
+    /**
+     * Returns the result of {@code add}.
+     *
+     * @param method the method
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> add(final String method, final String template,
                                                   final Predicate predicate, final UserRequestHandler<T> handler) {
         return add(new HttpString(method), template, predicate, handler);
     }
 
+    /**
+     * Returns the result of {@code add}.
+     *
+     * @param method the method
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> add(final HttpString method, final String template,
                                                   final Predicate predicate, final UserRequestHandler<T> handler) {
         PathTemplateMatcher<RoutingMatch<T>> matcher = matches.get(method);
@@ -127,31 +211,77 @@ public class UserRoutingHandler<T> implements UserRequestHandler<T> {
         return this;
     }
 
+    /**
+     * Returns the result of {@code head}.
+     *
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> head(final String template, final Predicate predicate,
                                                    final UserRequestHandler<T> handler) {
         return add(HEAD, template, predicate, handler);
     }
 
+    /**
+     * Returns the result of {@code get}.
+     *
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> get(final String template, final Predicate predicate,
                                                   final UserRequestHandler<T> handler) {
         return add(GET, template, predicate, handler);
     }
 
+    /**
+     * Returns the result of {@code post}.
+     *
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> post(final String template, final Predicate predicate,
                                                    final UserRequestHandler<T> handler) {
         return add(POST, template, predicate, handler);
     }
 
+    /**
+     * Returns the result of {@code put}.
+     *
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> put(final String template, final Predicate predicate,
                                                   final UserRequestHandler<T> handler) {
         return add(PUT, template, predicate, handler);
     }
 
+    /**
+     * Returns the result of {@code delete}.
+     *
+     * @param template the template
+     * @param predicate the predicate
+     * @param handler the handler
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> delete(final String template, final Predicate predicate,
                                                      final UserRequestHandler<T> handler) {
         return add(DELETE, template, predicate, handler);
     }
 
+    /**
+     * Returns the result of {@code fallback}.
+     *
+     * @param fallback the fallback
+     * @return the result
+     */
     public synchronized UserRoutingHandler<T> fallback(final HttpHandler fallback) {
         this.fallbackHandler = fallback;
         return this;
